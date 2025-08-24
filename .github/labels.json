@@ -1,0 +1,62 @@
+[
+  {
+    "name": "1주차",
+    "color": "F6F8FC",
+    "description": "1-3장. 아키텍처 기초"
+  },
+  {
+    "name": "2주차",
+    "color": "EDF2F7",
+    "description": "4-6장. 패러다임"
+  },
+  {
+    "name": "3주차",
+    "color": "DDE7F0",
+    "description": "7-9장. SRP, OCP, LSP"
+  },
+  {
+    "name": "4주차",
+    "color": "BFD1E5",
+    "description": "10-11장. ISP, DIP"
+  },
+  {
+    "name": "5주차",
+    "color": "8B9DC3",
+    "description": "12-14장. 컴포넌트"
+  },
+  {
+    "name": "6주차",
+    "color": "5B6B8C",
+    "description": "15-17장. 아키텍처, 경계"
+  },
+  {
+    "name": "7주차",
+    "color": "3E4B66",
+    "description": "18-20장. 경계, 업무규칙"
+  },
+  {
+    "name": "8주차",
+    "color": "2A3547",
+    "description": "21-23장. 클린 아키텍처"
+  },
+  {
+    "name": "9주차",
+    "color": "1A2332",
+    "description": "24-26장. 계층과 경계"
+  },
+  {
+    "name": "10주차",
+    "color": "0F1724",
+    "description": "27-29장. 서비스, 테스트"
+  },
+  {
+    "name": "11주차",
+    "color": "0A111E",
+    "description": "30-32장. 데이터베이스, 웹, 프레임워크"
+  },
+  {
+    "name": "12주차",
+    "color": "050B16",
+    "description": "33-34장. 사례연구 + 전체 복습"
+  }
+]

@@ -1,0 +1,332 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      check_result: ${{ steps.file_check.outputs.result }}
+      user_name: ${{ steps.file_check.outputs.user_name }}
+      file_name: ${{ steps.file_check.outputs.file_name }}
+      file_path: ${{ steps.file_check.outputs.file_path }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check user's study file
+        id: file_check
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const userMapping = {
+              'JANGSEYEONG': 'seyeong',
+              'sooyoung159': 'sooyoung',
+              'kamja44': 'hyeongho',
+              'youngme92': 'youngmo'
+            };
+
+            const githubUser = context.payload.pull_request.user.login;
+            const expectedFileName = userMapping[githubUser];
+
+            // outputs 설정 (항상 먼저 설정)
+            core.setOutput('user_name', githubUser);
+            core.setOutput('file_name', expectedFileName || '');
+            core.setOutput('file_path', ''); // 초기값 설정
+
+            console.log(`GitHub User: ${githubUser}`);
+            console.log(`Expected File Name: ${expectedFileName}`);
+
+            if (!expectedFileName) {
+              const unregisteredMessages = [
+                "🕵️ 새로운 스터디원이 등장했나요? 🎭 관리자에게 사용자 등록을 부탁드려요!",
+                "🚪 아직 저희 스터디 명단에 없으신 것 같아요! 관리자에게 연락해보세요!",
+                "🎪 신입 스터디원 환영해요! 🎉 하지만 먼저 관리자에게 등록을 요청해주세요!",
+                "🔍 미스터리한 사용자네요! 🕵️‍♀️ 관리자에게 매핑 테이블 추가를 요청해주세요!"
+              ];
+              
+              const randomUnregistered = unregisteredMessages[Math.floor(Math.random() * unregisteredMessages.length)];
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🎭 어라? 새로운 얼굴이네요!\n\n${randomUnregistered}\n\n---\n> 📝 **참고**: @${githubUser}님을 사용자 매핑 테이블에 추가해주세요!`
+              });
+              
+              core.setOutput('result', 'unregistered');
+              console.log('Setting result to: unregistered');
+              
+              // GitHub Environment File 방식도 함께 사용
+              const fs = require('fs');
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, `result=unregistered\n`);
+            } else {
+              // PR에서 변경된 파일들 확인
+              const files = await github.rest.pulls.listFiles({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number
+              });
+
+              console.log(`Found ${files.data.length} changed files:`);
+              files.data.forEach(file => {
+                console.log(`- ${file.filename} (${file.status})`);
+              });
+
+              // 해당 사용자의 마크다운 파일이 있는지 체크
+              const userFile = files.data.find(file => {
+                const fileName = file.filename.split('/').pop(); // 경로에서 파일명만 추출
+                return fileName === `${expectedFileName}.md` && 
+                       (file.status === 'added' || file.status === 'modified');
+              });
+
+              console.log(`Looking for file containing: ${expectedFileName}.md`);
+              console.log(`User file found:`, userFile ? userFile.filename : 'none');
+
+              if (userFile) {
+                // 파일 경로를 output에 저장
+                core.setOutput('file_path', userFile.filename);
+                
+                // GitHub Environment File 방식으로도 저장
+                const fs = require('fs');
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, `file_path=${userFile.filename}\n`);
+                
+                // 파일 내용 길이 체크
+                try {
+                  const fileContent = await github.rest.repos.getContent({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    path: userFile.filename,
+                    ref: context.payload.pull_request.head.sha
+                  });
+                  
+                  const contentLength = Buffer.from(fileContent.data.content, 'base64').toString().length;
+                  
+                  const successMessages = [
+                    `🎉 와! @${githubUser}님의 \`${expectedFileName}.md\` 파일을 발견했어요! 📚✨`,
+                    `🔍 찾았다! @${githubUser}님의 학습 정리가 여기 있었네요! 🎯`,
+                    `📝 @${githubUser}님의 \`${expectedFileName}.md\` 파일이 반짝반짝 빛나고 있어요! ✨`,
+                    `🎪 짜잔! @${githubUser}님의 학습 파일이 등장했어요! 📖`
+                  ];
+                  
+                  const randomSuccess = successMessages[Math.floor(Math.random() * successMessages.length)];
+                  
+                  let message = randomSuccess;
+                  
+                  if (contentLength < 100) {
+                    message += `\n\n💡 **참고**: 파일이 조금 가벼운 것 같아요! 더 많은 학습 내용이 있으면 좋겠어요! (현재: ${contentLength}자)`;
+                  } else {
+                    message += `\n\n👍 **훌륭해요**: 알찬 학습 내용이 가득하네요! (${contentLength}자)`;
+                  }
+                  
+                  await github.rest.issues.createComment({
+                    issue_number: context.issue.number,
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    body: `## 🎯 학습 파일 체크 완료!\n\n${message}\n\n---\n> 🚀 **다음 단계**: AI 리뷰봇이 곧 등장할 예정이에요!`
+                  });
+                  
+                  core.setOutput('result', 'success');
+                  console.log('Setting result to: success');
+                  
+                  // GitHub Environment File 방식도 함께 사용
+                  fs.appendFileSync(process.env.GITHUB_OUTPUT, `result=success\n`);
+                } catch (error) {
+                  console.error('Error reading file content:', error);
+                  core.setOutput('result', 'error');
+                  console.log('Setting result to: error');
+                  
+                  // GitHub Environment File 방식도 함께 사용
+                  const fs = require('fs');
+                  fs.appendFileSync(process.env.GITHUB_OUTPUT, `result=error\n`);
+                }
+              } else {
+                const noFileMessages = [
+                  `📂 어라? @${githubUser}님의 학습 파일이 숨바꼭질하고 있나요? 🙈 \`${expectedFileName}.md\` 파일을 찾을 수 없어요!`,
+                  `🔍 @${githubUser}님의 학습 파일을 찾는 중... 🕵️ \`${expectedFileName}.md\` 파일이 아직 보이지 않네요!`,
+                  `📝 @${githubUser}님의 학습 정리가 투명인간이 되었나봐요! 👻 \`${expectedFileName}.md\` 파일을 추가해주세요!`,
+                  `🎯 타겟을 놓쳤어요! 🏹 @${githubUser}님의 \`${expectedFileName}.md\` 파일이 필요해요!`
+                ];
+                
+                const randomNoFile = noFileMessages[Math.floor(Math.random() * noFileMessages.length)];
+                
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `## 🔍 학습 파일을 찾고 있어요!\n\n${randomNoFile}\n\n---\n> 📁 **필요한 파일**: \`${expectedFileName}.md\`\n> 📍 **위치**: 해당 주차 폴더 (예: \`week-1-아키텍처기초/${expectedFileName}.md\`)\n> 💡 **tip**: 파일명이 정확한지 다시 한 번 확인해주세요!`
+                });
+                
+                core.setOutput('result', 'no_file');
+                console.log('Setting result to: no_file');
+                
+                // GitHub Environment File 방식도 함께 사용
+                const fs = require('fs');
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, `result=no_file\n`);
+              }
+            }
+
+      - name: Debug outputs (check job)
+        run: |
+          echo "Check result: ${{ steps.file_check.outputs.result }}"
+          echo "User name: ${{ steps.file_check.outputs.user_name }}"
+          echo "File name: ${{ steps.file_check.outputs.file_name }}"
+          echo "File path: ${{ steps.file_check.outputs.file_path }}"
+
+      - name: Verify outputs are set
+        run: |
+          echo "GITHUB_OUTPUT file contents:"
+          cat $GITHUB_OUTPUT || echo "No GITHUB_OUTPUT file"
+
+  ai-review:
+    needs: check
+    runs-on: ubuntu-latest
+    # file_path가 있을 때만 실행 (빈 문자열이나 null이면 스킵)
+    if: ${{ needs.check.outputs.file_path != '' && needs.check.outputs.file_path != null }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Debug outputs (ai-review job)
+        run: |
+          echo "Check result: ${{ needs.check.outputs.check_result }}"
+          echo "User name: ${{ needs.check.outputs.user_name }}"
+          echo "File name: ${{ needs.check.outputs.file_name }}"
+          echo "File path: ${{ needs.check.outputs.file_path }}"
+
+      - name: AI Review
+        uses: actions/github-script@v6
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        with:
+          script: |
+            const checkResult = '${{ needs.check.outputs.check_result }}';
+            const githubUser = '${{ needs.check.outputs.user_name }}';
+            const expectedFileName = '${{ needs.check.outputs.file_name }}';
+            const filePath = '${{ needs.check.outputs.file_path }}';
+
+            console.log(`Check result: ${checkResult}`);
+            console.log(`AI Review starting for user: ${githubUser}`);
+            console.log(`Expected file name: ${expectedFileName}`);
+            console.log(`File path: ${filePath}`);
+
+            if (!expectedFileName || !filePath) {
+              console.log('Missing required data - skipping AI review');
+              return;
+            }
+
+            // 파일 내용 가져오기
+            try {
+              const fileContent = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: filePath,
+                ref: context.payload.pull_request.head.sha
+              });
+
+              const markdownContent = Buffer.from(fileContent.data.content, 'base64').toString();
+              console.log(`File content length: ${markdownContent.length} characters`);
+
+              // Gemini API 호출
+              const geminiApiKey = process.env.GEMINI_API_KEY;
+              if (!geminiApiKey) {
+                console.error('GEMINI_API_KEY is not set');
+                throw new Error('GEMINI_API_KEY is missing');
+              }
+
+              const prompt = `
+              다음은 클린 아키텍처 스터디에서 완성된 학습 정리 내용입니다.
+
+              ${markdownContent}
+
+              이 학습 정리를 친근하면서 재미있고 유머러스하게 리뷰해주세요! 아래 형식을 **반드시** 지켜주세요:
+
+              ## 📝 요약
+              (핵심 내용을 1-2줄로 간단히)
+
+              ## ✨ 잘하신 점
+              - (잘한 점 1 - 구체적으로 잘 정리된 부분 유머와 함께 간단히)
+              - (잘한 점 2 - 인상적인 인사이트나 이해도가 돋보이는 부분 간단히)  
+              - (잘한 점 3 - 기타 장점이나 노력이 보이는 부분 재미있는 표현으로 간단히)
+
+              ## 🤔 이런 관점은 어떠세요?
+              - (추가 관점 1 - 간단한 제안)
+              - (추가 관점 2 - 실무 연결점)
+
+              ## 🚀 한마디
+              (격려와 동기부여가 되는 따뜻하면서도 유머러스한 메시지 - 2줄 이내)
+
+              ---
+              > 🤖 **AI 리뷰봇**: (이 학습 정리를 재치있는 한 줄의 시나 명언처럼 요약한 감성적인 메시지)
+
+              **중요**: 
+              1. 반드시 위의 마크다운 형식을 지켜서 답변해주세요
+              2. 각 항목은 간결하게 1-2줄로 작성 (최대 3줄)
+              3. 친구처럼 친근하고 격려하는 톤이나 유머러스하게 작성 (존댓말 유지)
+              4. 이모지나 재미있는 비유 활용 환영
+              5. 맨 마지막 인용구(> 🤖 **AI 리뷰봇**:)는 꼭 포함하고, 시적이고 감성적인 한 줄로 작성해주세요
+              6. 각 섹션은 ##으로 시작하고, 리스트는 -나 **볼드**를 활용해주세요
+              `;
+
+              console.log('Calling Gemini API...');
+              const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  contents: [{
+                    parts: [{
+                      text: prompt
+                    }]
+                  }]
+                })
+              });
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`Gemini API error: ${response.status} - ${errorText}`);
+                throw new Error(`Gemini API error: ${response.status}`);
+              }
+              
+              const data = await response.json();
+              const aiReview = data.candidates[0].content.parts[0].text;
+              
+              console.log('AI review generated successfully');
+              
+              // AI 리뷰를 PR에 댓글로 추가
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🎓 AI 학습 리뷰\n\n${aiReview}`
+              });
+              
+              console.log('AI review comment posted successfully');
+              
+            } catch (error) {
+              console.error('Error in AI review process:', error);
+              
+              // API 실패 시 재미있는 메시지
+              const funnyMessages = [
+                "🤖 AI가 커피를 마시러 갔나봐요... ☕ 하지만 여러분의 학습 열정은 이미 충분히 훌륭해요!",
+                "🌙 AI가 잠깐 졸고 있는 것 같아요... 💤 대신 제가 말씀드리자면, 꾸준히 학습하는 모습이 정말 멋져요!",
+                "🚀 AI가 우주여행을 떠난 것 같네요... 🛸 하지만 여러분은 이미 클린 아키텍처 우주를 탐험하고 계시죠!",
+                "🍕 AI가 점심 먹으러 간 것 같아요... 🍽️ 그동안 여러분의 학습 정리를 보니 정말 알차게 공부하셨네요!",
+                "🎮 AI가 잠깐 게임하러 간 것 같아요... 🕹️ 하지만 여러분은 진짜 게임 - 클린 아키텍처 마스터하기를 플레이 중이시죠!"
+              ];
+              
+              const randomMessage = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🎓 AI 학습 리뷰 (오류 발생)\n\n${randomMessage}\n\n---\n> ⚠️ **참고**: AI API 호출 중 오류가 발생했지만, 여러분의 학습은 계속 진행됩니다! 🎉\n> 🔧 **오류 정보**: ${error.message}`
+              });
+            }

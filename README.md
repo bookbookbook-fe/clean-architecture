@@ -14,7 +14,7 @@
 
 ### 🗓️ Study Schedule
 
-> 추석 연휴는 쉬어가요.
+> **12주 완주 목표** - 추석 연휴는 쉬어가요.
 
 | Week    | Study Period  | PR Deadline      | Learning Scope                         |
 | ------- | ------------- | ---------------- | -------------------------------------- |
@@ -31,15 +31,67 @@
 | Week 11 | 11/12 ~ 11/18 | 11/18 (화) 23:59 | 30-32장 (데이터베이스, 웹, 프레임워크) |
 | Week 12 | 11/19 ~ 11/25 | 11/25 (화) 23:59 | 33-34장 (사례연구) + 전체 복습         |
 
+### 🤖 AI 리뷰 시스템
+
+> **Gemini AI가 학습을 도와줘요!**
+
+- 🚀 **자동 리뷰**: PR 제출 시 AI가 즉시 학습 정리 분석
+- 💬 **친근한 피드백**: 유머러스하고 따뜻한 톤의 개인화된 리뷰
+- ✨ **핵심 요약**: 잘한 점과 추가 관점 제안
+
+```
+📝 PR 올리기 → 🤖 AI 분석 → 💬 리뷰 댓글 → 🎉 학습 완료!
+```
+
+### 👥 스터디원
+
+<table>
+  <tr>
+    <td align="center" width="92px">
+      <a href="https://github.com/sooyoung159" target="_blank">
+        <img src="https://avatars.githubusercontent.com/u/68948735?v=4" alt="강수영 프로필" />
+      </a>
+    </td>
+    <td align="center" width="92px">
+      <a href="https://github.com/youngme92" target="_blank">
+        <img src="https://avatars.githubusercontent.com/u/50010735?v=4" alt="양영모 프로필" />
+      </a>
+    </td>
+    <td align="center" width="92px">
+      <a href="https://github.com/jangseyeong" target="_blank">
+        <img src="https://avatars.githubusercontent.com/u/137787915?v=4" alt="장세영 프로필" />
+      </a>
+    </td>
+    <td align="center" width="92px">
+      <a href="https://github.com/kamja44" target="_blank">
+        <img src="https://avatars.githubusercontent.com/u/88872409?v=4" alt="전형호 프로필" />
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/sooyoung159" target="_blank">강수영</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/youngme92" target="_blank">양영모</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/jangseyeong" target="_blank">장세영</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/kamja44" target="_blank">전형호</a>
+    </td>
+  </tr>
+</table>
+
 ## 🔄 How We Study
 
 ```mermaid
 graph LR
     A[📚 개인 학습] --> B[📝 화요일 23:59까지 PR]
     B --> C[🤖 자동 파일 검증 & AI 리뷰]
-    C --> D[👀 타인 학습내용 리뷰]
-    D --> E[💬 수요일 오프라인 토론]
-    E --> F[🔄 다음 주차 준비]
+    C --> D[💬 수요일 오프라인 토론]
+    D --> E[🔄 다음 주차 준비]
 ```
 
 ### 주간 프로세스

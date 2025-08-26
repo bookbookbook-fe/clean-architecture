@@ -144,14 +144,14 @@ graph LR
 ### 🔧 Git Workflow
 
 ```bash
-1. Fork this repository
+1. Clone this repository
 2. Create your branch: git checkout -b week-N-yourname
 3. Commit your changes: git commit -m 'Add: Week N study notes'
 4. Push to branch: git push origin week-N-yourname
 5. Create Pull Request
 ```
 
-- **PR 규칙**: Fork → PR → Squash Merge
+- **PR 규칙**: Clone → PR → Squash Merge
 - **자동 검증**: PR 생성 시 학습 파일 자동 체크
 - **AI 리뷰**: 제출된 학습 정리에 대한 AI 피드백 제공
 - **최종 머지**: 스터디 주최자가 확인 후 머지

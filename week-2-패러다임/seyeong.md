@@ -1,3 +1,17 @@
+# 클린 아키텍처 4~6장 정리
+
+> 📖 = 책 내용 | 💭 = 개인 생각
+
+## 📋 목차
+
+- [2부: 벽돌부터 시작하기: 프로그래밍 패러다임](https://github.com/bookbookbook-fe/clean-architecture/blob/main/week-1-%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98%EA%B8%B0%EC%B4%88/seyeong.md#2%EB%B6%80-%EB%B2%BD%EB%8F%8C%EB%B6%80%ED%84%B0-%EC%8B%9C%EC%9E%91%ED%95%98%EA%B8%B0-%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D-%ED%8C%A8%EB%9F%AC%EB%8B%A4%EC%9E%84)
+  - [4장: 구조적 프로그래밍](#4장-구조적-프로그래밍)
+  - [5장: 객체지향 프로그래밍](#5장-객체-지향-프로그래밍)
+  - [6장: 함수형 프로그래밍](#6장-함수형-프로그래밍)
+- [정리 및 다음 학습 방향](#-정리-및-다음-학습-방향)
+
+---
+
 ## 4장: 구조적 프로그래밍
 
 ### 배경과 문제의식
@@ -481,3 +495,364 @@ main → InputStream 인터페이스 ← KeyboardDriver
 - 플러그인 아키텍처 구성 가능
 - 고수준 정책과 저수준 세부사항의 분리
 - 저수준 모듈을 플러그인으로 만들어 독립적 개발/배포 가능
+
+## 6장: 함수형 프로그래밍
+
+### 배경과 개념
+
+#### 함수형 프로그래밍의 탄생
+
+- **역사**: 프로그래밍 자체보다 앞서 등장 (1930년대 알론조 처치의 λ-계산법)
+- **핵심 원칙**: 변수는 변경되지 않는다 (불변성, Immutability)
+- **대표 언어**: Clojure, Haskell, Erlang 등
+
+#### 가변성 vs 불변성
+
+**전통적인 언어 (Java, C++ 등)**:
+
+```java
+int x = 5;
+x = x + 1;  // 변수 x의 값이 변경됨
+```
+
+**함수형 언어 (Clojure)**:
+
+```clojure
+(def x 5)    ; x는 5로 영원히 고정됨
+; x를 "변경"하는 대신 새로운 값을 생성
+(def y (+ x 1))  ; x는 그대로, y는 6
+```
+
+### 불변성이 아키텍처에 미치는 영향
+
+#### 동시성 문제의 근본 원인
+
+모든 동시성 문제는 **가변변수** 때문에 발생:
+
+- **경합 조건 (Race Condition)**: 두 스레드가 같은 변수를 동시 수정
+- **교착상태 (Deadlock)**: 락이 서로를 기다리는 상황
+- **동시 업데이트**: 한 스레드가 수정 중인 데이터를 다른 스레드가 읽는 문제
+
+#### 구체적인 동시성 문제 예시
+
+**문제가 있는 코드 (가변 상태)**:
+
+```javascript
+// 공유 상태 - 문제의 원인
+let counter = 0;
+
+function increment() {
+  counter = counter + 1; // 여러 스레드가 동시 접근시 문제 발생
+}
+
+// Thread 1과 Thread 2가 동시에 increment() 호출
+// 예상: counter = 2
+// 실제: counter = 1 (Race Condition 발생)
+```
+
+**불변성으로 해결한 코드**:
+
+```javascript
+// 불변 접근법 - 새로운 상태 생성
+const createCounter = (currentValue) => ({
+  value: currentValue,
+  increment: () => createCounter(currentValue + 1),
+});
+
+const counter1 = createCounter(0);
+const counter2 = counter1.increment(); // 새로운 객체 반환
+const counter3 = counter2.increment(); // 기존 객체는 변경 안됨
+
+// 각 스레드가 독립적인 상태를 가짐 → 동시성 문제 없음
+```
+
+#### 불변성의 한계와 현실적 제약
+
+**이상적 조건**:
+
+- 무한한 저장 공간
+- 무한한 처리 속도
+
+**현실적 제약**:
+
+- 메모리 한계로 인한 성능 문제
+- 처리 속도의 오버헤드
+- 따라서 **타협**이 필요
+
+### 현실적 해결책: 타협 전략
+
+#### 1. 가변성의 분리 (Segregation of Mutability)
+
+애플리케이션을 **불변 컴포넌트**와 **가변 컴포넌트**로 분리:
+
+```
+┌─────────────────────────────────────┐
+│         불변 컴포넌트                │
+│    (순수 함수형 처리)               │
+│    - 비즈니스 로직                   │
+│    - 데이터 변환                     │
+│    - 계산 로직                       │
+└─────────────┬───────────────────────┘
+              │
+              │ 통신
+              │
+┌─────────────▼───────────────────────┐
+│         가변 컴포넌트                │
+│    (상태 변경 담당)                 │
+│    - 상태 저장                       │
+│    - I/O 처리                       │
+│    - 외부 시스템 연동                │
+└─────────────────────────────────────┘
+```
+
+#### React에서의 가변성 분리 예시
+
+**좋은 예시 - 가변성이 분리된 구조**:
+
+```jsx
+// 불변 컴포넌트 - 순수 함수형 계산 로직
+const calculateTotal = (items) => {
+  return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+};
+
+const applyDiscount = (total, discountRate) => {
+  return total * (1 - discountRate);
+};
+
+const formatPrice = (price) => {
+  return new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency: "KRW",
+  }).format(price);
+};
+
+// 가변 컴포넌트 - 상태 관리만 담당
+function ShoppingCart() {
+  const [items, setItems] = useState([]); // 가변 상태
+  const [discountRate, setDiscountRate] = useState(0);
+
+  // 순수 함수들을 조합하여 사용
+  const total = calculateTotal(items);
+  const discountedTotal = applyDiscount(total, discountRate);
+  const formattedPrice = formatPrice(discountedTotal);
+
+  const addItem = (newItem) => {
+    // 불변성 유지하며 상태 업데이트
+    setItems((prevItems) => [...prevItems, newItem]);
+  };
+
+  return (
+    <div>
+      {items.map((item) => (
+        <CartItem key={item.id} item={item} />
+      ))}
+      <div>Total: {formattedPrice}</div>
+    </div>
+  );
+}
+```
+
+**문제가 있는 예시 - 가변성이 섞인 구조**:
+
+```jsx
+// 안티패턴: 비즈니스 로직과 상태 변경이 섞임
+function ShoppingCart() {
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
+
+  const addItem = (newItem) => {
+    // 상태 직접 변경 + 계산 로직이 섞임 (가변성 분리 실패)
+    items.push(newItem); // 직접 변경 - 문제!
+
+    let newTotal = 0;
+    for (let item of items) {
+      // 계산 로직이 상태 변경과 섞임
+      newTotal += item.price * item.quantity;
+    }
+    setTotal(newTotal);
+  };
+
+  return (
+    <div>
+      {items.map((item) => (
+        <CartItem key={item.id} item={item} />
+      ))}
+      <div>Total: {total}</div>
+    </div>
+  );
+}
+```
+
+#### 프론트엔드에서 가변성 분리의 실제 적용
+
+**상태 관리 패턴 (Redux)**:
+
+```javascript
+// 불변 컴포넌트 - 순수 함수인 리듀서
+const todosReducer = (state = [], action) => {
+  switch (action.type) {
+    case "ADD_TODO":
+      return [...state, action.todo]; // 새 배열 생성 (불변)
+    case "TOGGLE_TODO":
+      return state.map((todo) =>
+        todo.id === action.id
+          ? { ...todo, completed: !todo.completed } // 새 객체 생성
+          : todo
+      );
+    default:
+      return state;
+  }
+};
+
+// 가변 컴포넌트 - 상태 저장소
+const store = createStore(todosReducer);
+```
+
+#### 2. 이벤트 소싱 (Event Sourcing)
+
+**기본 아이디어**: 상태 변경 대신 **변경 이벤트**를 저장
+
+**전통적 방식 (상태 저장)**:
+
+```javascript
+// 계좌 상태를 직접 저장
+const account = {
+  id: "account-123",
+  balance: 1500, // 현재 잔고만 저장
+};
+
+// 입금시 기존 상태 덮어씀
+account.balance += 500; // 이전 정보 손실
+```
+
+**이벤트 소싱 방식 (이벤트 저장)**:
+
+```javascript
+// 이벤트들을 저장 (불변)
+const events = [
+  { type: "ACCOUNT_OPENED", accountId: "account-123", initialBalance: 1000 },
+  { type: "DEPOSIT", accountId: "account-123", amount: 500 },
+  { type: "WITHDRAWAL", accountId: "account-123", amount: 200 },
+  { type: "DEPOSIT", accountId: "account-123", amount: 200 },
+];
+
+// 현재 상태가 필요할 때 이벤트들을 재계산 (순수 함수)
+const calculateBalance = (events, accountId) => {
+  return events
+    .filter((event) => event.accountId === accountId)
+    .reduce((balance, event) => {
+      switch (event.type) {
+        case "ACCOUNT_OPENED":
+          return event.initialBalance;
+        case "DEPOSIT":
+          return balance + event.amount;
+        case "WITHDRAWAL":
+          return balance - event.amount;
+        default:
+          return balance;
+      }
+    }, 0);
+};
+
+const currentBalance = calculateBalance(events, "account-123"); // 1500
+```
+
+#### 이벤트 소싱의 장점
+
+1. **완전한 불변성**: 이벤트는 한번 생성되면 절대 변경되지 않음
+2. **CRUD → CR**: Delete와 Update가 없음, Create와 Read만 존재
+3. **동시성 문제 해결**: 이벤트 append만 하므로 Lock 불필요
+4. **완전한 이력 추적**: 모든 변경 사항의 완전한 기록
+
+#### 프론트엔드에서의 이벤트 소싱 예시
+
+**상태 관리 with 이벤트 소싱**:
+
+```javascript
+// 이벤트 저장
+const userEvents = [];
+
+// 이벤트 생성 함수들 (불변)
+const createLoginEvent = (userId, timestamp) => ({
+  type: "USER_LOGGED_IN",
+  userId,
+  timestamp,
+});
+
+const createProfileUpdateEvent = (userId, updates, timestamp) => ({
+  type: "PROFILE_UPDATED",
+  userId,
+  updates,
+  timestamp,
+});
+
+// 현재 상태 계산 (순수 함수)
+const calculateUserState = (events, userId) => {
+  return events
+    .filter((event) => event.userId === userId)
+    .reduce(
+      (state, event) => {
+        switch (event.type) {
+          case "USER_LOGGED_IN":
+            return { ...state, isLoggedIn: true, lastLogin: event.timestamp };
+          case "PROFILE_UPDATED":
+            return {
+              ...state,
+              profile: { ...state.profile, ...event.updates },
+            };
+          default:
+            return state;
+        }
+      },
+      { isLoggedIn: false, profile: {}, lastLogin: null }
+    );
+};
+
+// 사용 예시
+userEvents.push(createLoginEvent("user-123", Date.now()));
+userEvents.push(
+  createProfileUpdateEvent("user-123", { name: "John" }, Date.now())
+);
+
+const currentUserState = calculateUserState(userEvents, "user-123");
+```
+
+### 함수형 프로그래밍의 의의
+
+#### 아키텍처 관점에서의 가치
+
+1. **동시성 안전성**: 불변 데이터는 여러 스레드가 안전하게 공유 가능
+2. **예측 가능성**: 순수 함수는 동일한 입력에 항상 동일한 출력 보장
+3. **테스트 용이성**: 부작용이 없는 함수는 테스트하기 쉬움
+4. **디버깅 편의성**: 상태 변경 추적이 명확함
+
+#### 현실적 적용 원칙
+
+1. **핵심 비즈니스 로직**: 가능한 한 순수 함수로 작성
+2. **상태 변경 최소화**: 가변 상태를 애플리케이션 경계로 밀어내기
+3. **이벤트 기반 설계**: 상태 변경을 이벤트로 모델링
+4. **불변 데이터 구조 활용**: Immutable.js, Immer 등의 라이브러리 사용
+
+> **💭 개인 생각**:
+>
+> 함수형 프로그래밍의 핵심은 "데이터/계산/액션" 분리인 것 같네요
+>
+> - **데이터와 계산의 범위를 늘리고** (불변 컴포넌트)
+> - **액션의 범위를 줄이는 것** (가변 컴포넌트)
+
+---
+
+## 🔖 정리 및 다음 학습 방향
+
+### 핵심 포인트
+
+1. 구조적 프로그래밍은 제어흐름의 직접적인 전환에 부과되는 규율
+2. 객체지향 프로그래밍은 제어흐름의 간접적인 전환에 부과되는 규율
+3. 함수형 프로그래밍은 변수 할당에 부과되는 규율
+
+세 프래러다임은 우리에게서 무엇인가를 뺏어감
+그래서 우리가 코드를 작성하는 방식의 형태를 한정시키고, 어떤 패러다임도 우리의 권한이나 능력에 자유로움이나 보탬을 주진 않음,
+
+우린 지난 반세기동안 "해서는 안되는 것"에 대해 배움.
+도구는 달라졌고 하드웨어도 변했지만, "소프트웨어"의 핵심은 여전히 순차, 분기, 반복, 참조로 구성된다.
+그 이상도 이하도 아니다.
